@@ -8,8 +8,10 @@ Sk8forTECPostgreSQL/*.sqlite3
 Sk8forTECPostgreSQL/*.erd
 ### DBeaver ###
 # ide config file
-Sk8forTECPostgreSQL/*.dbeaver-data-sources*.xml
-Sk8forTECPostgreSQL/Diagrams/*.erd
+PostgreSQL/*.dbeaver-data-sources*.xml
+PostgreSQL/Diagrams/*.erd
+PostgreSQL/.project
+PostgreSQL/.dbeaver/*
 ### Database ###
 *.accdb
 *.db

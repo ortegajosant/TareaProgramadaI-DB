@@ -1,0 +1,32 @@
+CREATE TABLE Pais (
+	IdPais SERIAL PRIMARY KEY,
+	Nombre VARCHAR(20) NOT NULL
+);
+
+CREATE TABLE Provincia (
+	IdProvincia SERIAL PRIMARY KEY,
+	IdPais SERIAL,
+	Nombre VARCHAR(20) NOT NULL,
+	FOREIGN KEY(IdPais) REFERENCES Pais(IdPais)
+);
+
+CREATE TABLE Canton (
+	IdCanton SERIAL PRIMARY KEY,
+	IdProvincia SERIAL,
+	Nombre VARCHAR(20) NOT NULL,
+	FOREIGN KEY(IdProvincia) REFERENCES Provincia(IdProvincia)
+);
+
+CREATE TABLE Ciudad (
+	IdCiudad SERIAL PRIMARY KEY,
+	IdCanton SERIAL,
+	Nombre VARCHAR(20) NOT NULL,
+	FOREIGN KEY(IdCanton) REFERENCES Canton(IdCanton)
+);
+
+CREATE TABLE Direccion (
+	IdDireccion SERIAL PRIMARY KEY,
+	IdCiudad SERIAL,
+	Nombre VARCHAR(20) NOT NULL,
+	FOREIGN KEY(IdCiudad) REFERENCES Ciudad(IdCiudad)
+);
