@@ -34,3 +34,10 @@ CREATE TABLE EmpleadoMes
     Fecha DATE,
     FOREIGN KEY (IdEmpleado) REFERENCES Empleado (IdEmpleado)
 );
+
+CREATE TABLE Devolucion
+(
+	IdArticulo INT NOT NULL,
+    Fecha DATE NOT NULL,
+    FOREIGN KEY (IdArticulo) REFERENCES Articulo (IdArticulo)
+);
