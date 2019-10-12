@@ -7,6 +7,7 @@ CREATE TABLE Articulo (
 	FOREIGN KEY (IdProducto) REFERENCES Producto(IdProducto),
 	FOREIGN KEY (IdSucursal) REFERENCES Sucursal(IdSucursal)
 );
+ALTER TABLE Articulo ADD COLUMN Costo INTEGER NOT NULL;
 
 CREATE TABLE ActualizacionArticuloPunto(
 	IdActualizacionArticuloPunto SERIAL PRIMARY KEY,

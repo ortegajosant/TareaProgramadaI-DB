@@ -2,6 +2,7 @@ CREATE TABLE Marca (
 	IdMarca SERIAL PRIMARY KEY,
 	NombreMarca VARCHAR(20) NOT NULL
 );
+--ALTER TABLE Marca ADD COLUMN FechaAdicion DATE NOT NULL;
 
 CREATE TABLE TipoArticulo (
 	IdTipoArticulo SERIAL PRIMARY KEY,
@@ -21,6 +22,7 @@ CREATE TABLE Producto (
 	FOREIGN KEY (IdMarca) REFERENCES Marca(IdMarca),
 	FOREIGN KEY (IdTipoArticulo) REFERENCES TipoArticulo(IdTipoArticulo)
 );
+--ALTER TABLE Producto ADD COLUMN FechaAdicion DATE NOT NULL;
 
 CREATE TABLE DetalleProducto (
 	IdProducto SERIAL,
@@ -28,3 +30,4 @@ CREATE TABLE DetalleProducto (
 	Descripcion VARCHAR(20) NOT NULL,
 	FOREIGN KEY (IdProducto) REFERENCES Producto(IdProducto)
 );
+--ALTER TABLE DetalleProducto ADD COLUMN FechaAdicion DATE NOT NULL;
