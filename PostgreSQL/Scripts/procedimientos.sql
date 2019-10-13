@@ -104,7 +104,7 @@ $$ LANGUAGE plpgsql;
 --SELECT * FROM FragmentarArticulos(1);
 
 
-CREATE FUNCTION FragmentarProductos()
+CREATE OR REPLACE FUNCTION FragmentarProductos()
 RETURNS TABLE (J JSON) AS $$
 BEGIN
 	RETURN QUERY
@@ -188,117 +188,96 @@ $$ LANGUAGE plpgsql;
 --SELECT * FROM FragmentarListaPuntos();
 
 
-CREATE OR REPLACE FUNCTION FragmentarEmpleados()
+CREATE FUNCTION FragmentarEmpleados()
 RETURNS TABLE (J JSON) AS $$
 BEGIN
 	RETURN QUERY
-	SELECT JSON_AGG(
-				JSON_BUILD_OBJECT(
-					'Usuario', JSON_AGG(
-							            JSON_BUILD_OBJECT(
-							                'Nombre', U.Nombre,
-							                'Identificacion', U.Identificacion,
-							                'ApellidoPat', U.ApellidoPat,
-							                'ApellidoMat', U.ApellidoMat,
-							                'FechaNacimiento', U.FechaNacimiento,
-							                'NumeroTelefonico', U.NumeroTelefonico,
-							                'Direccion', direcciones
-							                )
-							            )
-					'Empleado', empleados
-	            )
-			) AS NuevosEmpleados
+	SELECT JSON_AGG(JSON_BUILD_OBJECT(
+	    'Usuario', JSON_BUILD_OBJECT(
+	        'Nombre', U.Nombre,
+	        'Identificacion', U.Identificacion,
+	        'ApellidoPat', U.ApellidoPat,
+	        'ApellidoMat', U.ApellidoMat,
+	        'FechaNacimiento', U.FechaNacimiento,
+	        'NumeroTelefonico', U.NumeroTelefonico,
+	        'Direccion', JSON_BUILD_OBJECT(
+	            'Direccion', D.Nombre,
+	            'Ciudad', Ci.Nombre,
+	            'Canton', Ca.Nombre,
+	            'Provincia', Pr.Nombre,
+	            'Pais', Pa.Nombre
+	        )
+	    ),
+	    'Empleado', JSON_BUILD_OBJECT(
+	        'FechaIngreso', E.FechaIngreso,
+	        'CuentaBancaria', E.CuentaBancaria,
+	        'Estado', E.Estado,
+	        'IdPuesto', EP.IdPuesto
+	    )
+	))
 	FROM Usuario AS U
-	LEFT JOIN (
-	    SELECT 
-	    	E.IdUsuario,
-	        JSON_AGG(
-	            JSON_BUILD_OBJECT(
-	                'FechaIngreso', E.FechaIngreso,
-	                'CuentaBancaria', E.CuentaBancaria,
-	                'Estado', E.Estado,
-	                'IdPuesto', EP.IdPuesto
-	                )
-	            ) AS empleados
-		FROM Empleado AS E
-		INNER JOIN PuestoEmpleado AS EP ON EP.IdEmpleado = E.IdEmpleado
-		GROUP BY 1) AS Emp ON U.IdUsuario = Emp.IdUsuario
-	LEFT JOIN (
-	    SELECT 
-	        D.IdDireccion,
-	        JSON_AGG(
-	            JSON_BUILD_OBJECT(
-	                'Direccion', D.Nombre,
-	                'Ciudad', Ci.Nombre,
-	                'Canton', Ca.Nombre,
-	                'Provincia', Pr.Nombre,
-	                'Pais', Pa.Nombre
-	                )
-	            ) AS direcciones
-		FROM Direccion AS D
-		INNER JOIN Ciudad AS Ci ON Ci.IdCiudad = D.IdCiudad
-		INNER JOIN Canton AS Ca ON Ca.IdCanton = Ci.IdCanton
-		INNER JOIN Provincia AS Pr ON Pr.IdProvincia = Ca.IdProvincia
-		INNER JOIN Pais AS Pa ON Pa.IdPais = Pr.IdPais
-		GROUP BY 1) AS Dir ON U.IdDireccion = Dir.IdDireccion
-	WHERE Pd.FechaAdicion = NOW()::TIMESTAMP::DATE;
+	INNER JOIN Direccion AS D ON D.IdDireccion = U.IdDireccion
+	INNER JOIN Ciudad AS Ci ON Ci.IdCiudad = D.IdCiudad
+	INNER JOIN Canton AS Ca ON Ca.IdCanton = Ci.IdCanton
+	INNER JOIN Provincia AS Pr ON Pr.IdProvincia = Ca.IdProvincia
+	INNER JOIN Pais AS Pa ON Pa.IdPais = Pr.IdPais
+	INNER JOIN Empleado AS E ON E.IdUsuario = U.IdUsuario
+	INNER JOIN PuestoEmpleado AS EP ON EP.IdEmpleado = E.IdEmpleado
+	WHERE EP.FechaInicio = NOW()::TIMESTAMP::DATE;
 END;
 $$ LANGUAGE plpgsql;
 --DROP FUNCTION FragmentarEmpleados();
-SELECT * FROM FragmentarEmpleados();
+--SELECT * FROM FragmentarEmpleados();
+	
 
-SELECT JSON_AGG(
-			JSON_BUILD_OBJECT(
-				'Usuario', usuarios,
-				'Empleado', empleados
-            )
-		) AS NuevosEmpleados
-FROM Usuario AS U1
-LEFT JOIN (
-    SELECT 
-    	U2.IdUsuario,
-        JSON_AGG(
-            JSON_BUILD_OBJECT(
-                'Nombre', U2.Nombre,
-                'Identificacion', U2.Identificacion,
-                'ApellidoPat', U2.ApellidoPat,
-                'ApellidoMat', U2.ApellidoMat,
-                'FechaNacimiento', U2.FechaNacimiento,
-                'NumeroTelefonico', U2.NumeroTelefonico,
-                'Direccion', direcciones
-                )
-            ) AS usuarios
-	FROM Usuario AS U2
-	LEFT JOIN (
-	    SELECT 
-	        D.IdDireccion,
-	        JSON_AGG(
-	            JSON_BUILD_OBJECT(
-	                'Direccion', D.Nombre,
-	                'Ciudad', Ci.Nombre,
-	                'Canton', Ca.Nombre,
-	                'Provincia', Pr.Nombre,
-	                'Pais', Pa.Nombre
-	                )
-	            ) AS direcciones
-		FROM Direccion AS D
-		INNER JOIN Ciudad AS Ci ON Ci.IdCiudad = D.IdCiudad
-		INNER JOIN Canton AS Ca ON Ca.IdCanton = Ci.IdCanton
-		INNER JOIN Provincia AS Pr ON Pr.IdProvincia = Ca.IdProvincia
-		INNER JOIN Pais AS Pa ON Pa.IdPais = Pr.IdPais
-		GROUP BY 1) AS Dir ON U2.IdDireccion = Dir.IdDireccion
-	GROUP BY 1) AS usu ON U1.IdUsuario = usu.IdUsuario
-LEFT JOIN (
-    SELECT 
-    	E.IdUsuario,
-        JSON_AGG(
-            JSON_BUILD_OBJECT(
-                'FechaIngreso', E.FechaIngreso,
-                'CuentaBancaria', E.CuentaBancaria,
-                'Estado', E.Estado,
-                'IdPuesto', EP.IdPuesto
-                )
-            ) AS empleados
-	FROM Empleado AS E
-	INNER JOIN PuestoEmpleado AS EP ON EP.IdEmpleado = E.IdEmpleado
-	GROUP BY 1) AS Emp ON U1.IdUsuario = Emp.IdUsuario;
+CREATE OR REPLACE FUNCTION FragmentarCliente(IN id INTEGER)
+RETURNS TABLE (J JSON) AS $$
+BEGIN
+	RETURN QUERY
+	SELECT JSON_BUILD_OBJECT(
+	    'Usuario', JSON_BUILD_OBJECT(
+	        'Nombre', U.Nombre,
+	        'Identificacion', U.Identificacion,
+	        'ApellidoPat', U.ApellidoPat,
+	        'ApellidoMat', U.ApellidoMat,
+	        'FechaNacimiento', U.FechaNacimiento,
+	        'NumeroTelefonico', U.NumeroTelefonico,
+	        'Direccion', JSON_BUILD_OBJECT(
+	            'Direccion', D.Nombre,
+	            'Ciudad', Ci.Nombre,
+	            'Canton', Ca.Nombre,
+	            'Provincia', Pr.Nombre,
+	            'Pais', Pa.Nombre
+	        )
+	    ),
+	    'Puntos', C.Puntos
+	)
+	FROM Usuario AS U
+	INNER JOIN Direccion AS D ON D.IdDireccion = U.IdDireccion
+	INNER JOIN Ciudad AS Ci ON Ci.IdCiudad = D.IdCiudad
+	INNER JOIN Canton AS Ca ON Ca.IdCanton = Ci.IdCanton
+	INNER JOIN Provincia AS Pr ON Pr.IdProvincia = Ca.IdProvincia
+	INNER JOIN Pais AS Pa ON Pa.IdPais = Pr.IdPais
+	INNER JOIN Cliente AS C ON C.IdUsuario = U.IdUsuario
+	WHERE U.IdUsuario = id;
+END;
+$$ LANGUAGE plpgsql;
+--DROP FUNCTION FragmentarCliente(INTEGER);
+--SELECT * FROM FragmentarCliente(1);
+
+
+CREATE FUNCTION FragmentarPuntos(IN cedula VARCHAR)
+RETURNS TABLE (J JSON) AS $$
+BEGIN
+	RETURN QUERY
+	SELECT JSON_BUILD_OBJECT(
+	    'Identificación', U.Identificacion,
+	    'Puntos', C.Puntos
+	)
+	FROM Usuario AS U
+	INNER JOIN Cliente AS C ON C.IdUsuario = U.IdUsuario
+	WHERE U.Identificacion = cedula;
+END;
+$$ LANGUAGE plpgsql;
+--DROP FUNCTION FragmentarPuntos(VARCHAR);
+--SELECT * FROM FragmentarPuntos('305210664');
