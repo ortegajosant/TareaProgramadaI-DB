@@ -80,7 +80,7 @@ $$ LANGUAGE plpgsql;
 ---
 
 
-CREATE FUNCTION FragmentarArticulo(IN nSucursal INTEGER)
+CREATE FUNCTION FragmentarArticulos(IN nSucursal INTEGER)
 RETURNS TABLE (J JSON) AS $$
 BEGIN
 	RETURN QUERY
@@ -100,18 +100,41 @@ BEGIN
 		  En.FechaHoraSalida::DATE = NOW()::TIMESTAMP::DATE;
 END;
 $$ LANGUAGE plpgsql;
-DROP FUNCTION FragmentarArticulo(INTEGER);
-SELECT * FROM FragmentarArticulo(1);
+--DROP FUNCTION FragmentarArticulos(INTEGER);
+--SELECT * FROM FragmentarArticulos(1);
 
 
 CREATE FUNCTION FragmentarProductos()
 RETURNS TABLE (J JSON) AS $$
 BEGIN
 	RETURN QUERY
-	SELECT ROW_TO_JSON(a) FROM (SELECT IdProducto, IdMarca, IdTipoArticulo, Nombre, Codigo, 
-									   Peso, TiempoGarantia, Sexo, Medida
-								FROM Producto
-								WHERE FechaAdicion = NOW()::TIMESTAMP::DATE) a;
+	SELECT JSON_AGG(
+				JSON_BUILD_OBJECT(
+					'IdProducto', Pd.IdProducto,
+					'IdMarca', Pd.IdMarca,
+					'IdTipoArticulo', Pd.IdTipoArticulo,
+					'Codigo', Pd.Codigo,
+					'Nombre', Pd.Nombre,
+					'Peso', Pd.Peso,
+					'TiempoGarantia', Pd.TiempoGarantia,
+					'Sexo', Pd.Sexo,
+					'Medida', Pd.Medida,
+					'Detalles', Detalles
+	            )
+			) AS Productos
+	FROM Producto AS Pd
+	LEFT JOIN (
+	    SELECT 
+	        D.IdProducto,
+	        JSON_AGG(
+	            JSON_BUILD_OBJECT(
+	                'Detalle', D.Detalle,    
+	                'Descripcion', D.Descripcion
+	                )
+	            ) AS Detalles
+		FROM DetalleProducto AS D
+		GROUP BY 1) AS Det ON Pd.IdProducto = Det.IdProducto
+	WHERE Pd.FechaAdicion = NOW()::TIMESTAMP::DATE;
 END;
 $$ LANGUAGE plpgsql;
 --DROP FUNCTION FragmentarProductos();
@@ -122,111 +145,160 @@ CREATE FUNCTION FragmentarMarca()
 RETURNS TABLE (J JSON) AS $$
 BEGIN
 	RETURN QUERY
-	SELECT ROW_TO_JSON(a) FROM (SELECT IdMarca, NombreMarca 
-								FROM Marca
-								WHERE FechaAdicion = NOW()::TIMESTAMP::DATE) a;
+	SELECT JSON_AGG(
+				JSON_BUILD_OBJECT(
+					'IdMarca', M.IdMarca,
+					'NombreMarca', M.NombreMarca
+	            )
+			) AS Marcas
+	FROM Marca AS M
+	WHERE M.FechaAdicion = NOW()::TIMESTAMP::DATE;
 END;
 $$ LANGUAGE plpgsql;
 --DROP FUNCTION FragmentarMarca();
 --SELECT * FROM FragmentarMarca();
 
 
-CREATE FUNCTION FragmentarDetalleProducto()
+CREATE FUNCTION FragmentarListaPuntos()
 RETURNS TABLE (J JSON) AS $$
 BEGIN
 	RETURN QUERY
-	SELECT ROW_TO_JSON(a) FROM (SELECT IdProducto, Detalle, Descripcion
-								FROM DetalleProducto
-								WHERE FechaAdicion = NOW()::TIMESTAMP::DATE) a;
+	SELECT JSON_BUILD_OBJECT(
+				'IdActualizacionArticuloPunto', AcAr.IdActualizacionArticuloPunto,
+				'FechaInicio', AcAr.FechaInicio,
+				'FechaFinal', AcAr.FechaFinal,
+				'Productos', productos
+            ) AS Lista
+	FROM ActualizacionArticuloPunto AS AcAr
+	LEFT JOIN (
+	    SELECT 
+	        Pr.IdActualizacionArticuloPunto,
+	        JSON_AGG(
+	            JSON_BUILD_OBJECT(
+	                'IdProducto', Pr.IdProducto,    
+	                'Puntos', Pr.Puntos
+	                )
+	            ) AS Productos
+		FROM ArticuloPunto AS Pr
+		GROUP BY 1) AS Ars ON AcAr.IdActualizacionArticuloPunto = Ars.IdActualizacionArticuloPunto
+	WHERE AcAr.FechaInicio = NOW()::TIMESTAMP::DATE;
 END;
 $$ LANGUAGE plpgsql;
---DROP FUNCTION FragmentarDetalleProducto();
---SELECT * FROM FragmentarDetalleProducto();
+--DROP FUNCTION FragmentarListaPuntos();
+--SELECT * FROM FragmentarListaPuntos();
 
 
-CREATE FUNCTION FragmentarActualizacionArticuloPunto()
+CREATE OR REPLACE FUNCTION FragmentarEmpleados()
 RETURNS TABLE (J JSON) AS $$
 BEGIN
 	RETURN QUERY
-	SELECT ROW_TO_JSON(a) FROM (SELECT IdActualizacionArticuloPunto, FechaInicio, FechaFinal
-								FROM ActualizacionArticuloPunto
-								WHERE FechaInicio = NOW()::TIMESTAMP::DATE) a;
+	SELECT JSON_AGG(
+				JSON_BUILD_OBJECT(
+					'Usuario', JSON_AGG(
+							            JSON_BUILD_OBJECT(
+							                'Nombre', U.Nombre,
+							                'Identificacion', U.Identificacion,
+							                'ApellidoPat', U.ApellidoPat,
+							                'ApellidoMat', U.ApellidoMat,
+							                'FechaNacimiento', U.FechaNacimiento,
+							                'NumeroTelefonico', U.NumeroTelefonico,
+							                'Direccion', direcciones
+							                )
+							            )
+					'Empleado', empleados
+	            )
+			) AS NuevosEmpleados
+	FROM Usuario AS U
+	LEFT JOIN (
+	    SELECT 
+	    	E.IdUsuario,
+	        JSON_AGG(
+	            JSON_BUILD_OBJECT(
+	                'FechaIngreso', E.FechaIngreso,
+	                'CuentaBancaria', E.CuentaBancaria,
+	                'Estado', E.Estado,
+	                'IdPuesto', EP.IdPuesto
+	                )
+	            ) AS empleados
+		FROM Empleado AS E
+		INNER JOIN PuestoEmpleado AS EP ON EP.IdEmpleado = E.IdEmpleado
+		GROUP BY 1) AS Emp ON U.IdUsuario = Emp.IdUsuario
+	LEFT JOIN (
+	    SELECT 
+	        D.IdDireccion,
+	        JSON_AGG(
+	            JSON_BUILD_OBJECT(
+	                'Direccion', D.Nombre,
+	                'Ciudad', Ci.Nombre,
+	                'Canton', Ca.Nombre,
+	                'Provincia', Pr.Nombre,
+	                'Pais', Pa.Nombre
+	                )
+	            ) AS direcciones
+		FROM Direccion AS D
+		INNER JOIN Ciudad AS Ci ON Ci.IdCiudad = D.IdCiudad
+		INNER JOIN Canton AS Ca ON Ca.IdCanton = Ci.IdCanton
+		INNER JOIN Provincia AS Pr ON Pr.IdProvincia = Ca.IdProvincia
+		INNER JOIN Pais AS Pa ON Pa.IdPais = Pr.IdPais
+		GROUP BY 1) AS Dir ON U.IdDireccion = Dir.IdDireccion
+	WHERE Pd.FechaAdicion = NOW()::TIMESTAMP::DATE;
 END;
 $$ LANGUAGE plpgsql;
---DROP FUNCTION FragmentarActualizacionArticuloPunto();
---SELECT * FROM FragmentarActualizacionArticuloPunto();
+--DROP FUNCTION FragmentarEmpleados();
+SELECT * FROM FragmentarEmpleados();
 
-
-CREATE FUNCTION FragmentarArticuloPunto()
-RETURNS TABLE (J JSON) AS $$
-BEGIN
-	RETURN QUERY
-	SELECT ROW_TO_JSON(a) FROM (SELECT ArP.IdActualizacionArticuloPunto, ArP.IdProducto, ArP.Puntos
-								FROM ArticuloPunto AS ArP
-								INNER JOIN ActualizacionArticuloPunto AS Ac
-										   ON Ac.IdActualizacionArticuloPunto = ArP.IdActualizacionArticuloPunto
-								WHERE Ac.FechaInicio = NOW()::TIMESTAMP::DATE) a;
-END;
-$$ LANGUAGE plpgsql;
---DROP FUNCTION FragmentarArticuloPunto();
---SELECT * FROM FragmentarArticuloPunto();
-
-
-CREATE OR REPLACE FUNCTION test()
-RETURNS TABLE (J JSON) AS $$
-BEGIN
-	--RETURN QUERY
-	WITH direcciones AS
-	(SELECT (json_agg(json_build_object('nombre_direccion',d.Nombre))) direcciones
-	FROM Direccion AS d)
-	SELECT json_build_object('users', (json_agg(json_build_object('nombre',u.Nombre,'identificacion',u.Identificacion, 'direccion', direcciones))))
-			FROM Usuario AS u LEFT JOIN Direccion d ON u.IdDireccion = d.IdDireccion;
-END;
-$$ LANGUAGE plpgsql;
---DROP FUNCTION test();
---SELECT * FROM test();
-
-
---Ejemplo JSONS
 SELECT JSON_AGG(
 			JSON_BUILD_OBJECT(
-				'id', u.IdUsuario,
-				'name', u.Nombre,
-				'place', direc
+				'Usuario', usuarios,
+				'Empleado', empleados
             )
-		) AS users
-FROM Usuario AS u
+		) AS NuevosEmpleados
+FROM Usuario AS U1
 LEFT JOIN (
     SELECT 
-        d.IdDireccion,
+    	U2.IdUsuario,
         JSON_AGG(
             JSON_BUILD_OBJECT(
-                'id', d.IdDireccion,    
-                'lugar', d.Nombre
+                'Nombre', U2.Nombre,
+                'Identificacion', U2.Identificacion,
+                'ApellidoPat', U2.ApellidoPat,
+                'ApellidoMat', U2.ApellidoMat,
+                'FechaNacimiento', U2.FechaNacimiento,
+                'NumeroTelefonico', U2.NumeroTelefonico,
+                'Direccion', direcciones
                 )
-            ) AS direc
-	FROM Direccion AS d
-	GROUP BY 1) AS x ON u.IdDireccion = x.IdDireccion;
-
-SELECT ROW_TO_JSON(a) FROM (SELECT Ar.IdArticulo, Ar.IdProducto, Ar.Estado, Ar.EstadoArticulo, Ar.Costo 
-FROM Articulo AS Ar 
-INNER JOIN EnvioArticulo AS EnAr ON EnAr.IdArticulo = Ar.IdArticulo
-INNER JOIN Envio AS En ON En.IdEnvio = EnAr.IdEnvio
-WHERE Ar.IdSucursal = nSucursal AND 
-	  En.FechaHoraSalida::DATE = NOW()::TIMESTAMP::DATE) a;
-	 
-SELECT JSON_AGG(
-			JSON_BUILD_OBJECT(
-				'IdArticulo', Ar.IdArticulo,
-				'IdProducto', Ar.IdProducto,
-				'Estado', Ar.Estado,
-				'EstadoArticulo', Ar.EstadoArticulo,
-				'Costo', Ar.Costo
-            )
-		) AS Articulos
-FROM Articulo AS Ar
-INNER JOIN EnvioArticulo AS EnAr ON EnAr.IdArticulo = Ar.IdArticulo
-INNER JOIN Envio AS En ON En.IdEnvio = EnAr.IdEnvio
-WHERE Ar.IdSucursal = nSucursal AND 
-	  En.FechaHoraSalida::DATE = NOW()::TIMESTAMP::DATE;
-   
+            ) AS usuarios
+	FROM Usuario AS U2
+	LEFT JOIN (
+	    SELECT 
+	        D.IdDireccion,
+	        JSON_AGG(
+	            JSON_BUILD_OBJECT(
+	                'Direccion', D.Nombre,
+	                'Ciudad', Ci.Nombre,
+	                'Canton', Ca.Nombre,
+	                'Provincia', Pr.Nombre,
+	                'Pais', Pa.Nombre
+	                )
+	            ) AS direcciones
+		FROM Direccion AS D
+		INNER JOIN Ciudad AS Ci ON Ci.IdCiudad = D.IdCiudad
+		INNER JOIN Canton AS Ca ON Ca.IdCanton = Ci.IdCanton
+		INNER JOIN Provincia AS Pr ON Pr.IdProvincia = Ca.IdProvincia
+		INNER JOIN Pais AS Pa ON Pa.IdPais = Pr.IdPais
+		GROUP BY 1) AS Dir ON U2.IdDireccion = Dir.IdDireccion
+	GROUP BY 1) AS usu ON U1.IdUsuario = usu.IdUsuario
+LEFT JOIN (
+    SELECT 
+    	E.IdUsuario,
+        JSON_AGG(
+            JSON_BUILD_OBJECT(
+                'FechaIngreso', E.FechaIngreso,
+                'CuentaBancaria', E.CuentaBancaria,
+                'Estado', E.Estado,
+                'IdPuesto', EP.IdPuesto
+                )
+            ) AS empleados
+	FROM Empleado AS E
+	INNER JOIN PuestoEmpleado AS EP ON EP.IdEmpleado = E.IdEmpleado
+	GROUP BY 1) AS Emp ON U1.IdUsuario = Emp.IdUsuario;
