@@ -488,3 +488,44 @@ $$ LANGUAGE plpgsql;
 --DROP FUNCTION InsertarPuntos(TEXT);
 --SELECT InsertarPuntos('{"Identificacion":"305210664","Puntos":"-1"}');
 
+
+CREATE OR REPLACE FUNCTION InsertarReporte(IN report TEXT)
+RETURNS VOID AS $$
+DECLARE reporteJson JSON;
+DECLARE idS INTEGER;
+DECLARE fec DATE;
+DECLARE idC INTEGER;
+DECLARE punAntes INTEGER;
+DECLARE vens INTEGER[];
+DECLARE devs INTEGER[];
+DECLARE ven INTEGER;
+DECLARE dev INTEGER;
+DECLARE idR INTEGER;
+BEGIN
+	SELECT INTO reporteJson CAST(report AS JSON);
+	SELECT INTO idS CAST(reporteJson->>'IdSucursal' AS INTEGER);
+	SELECT INTO fec CAST(reporteJson->>'FechaReporte' AS DATE);
+	SELECT INTO vens ARRAY(
+		SELECT JSON_ARRAY_ELEMENTS_TEXT(reporteJson->'Ventas')::INTEGER
+	);
+	SELECT INTO devs ARRAY(
+		SELECT JSON_ARRAY_ELEMENTS_TEXT(reporteJson->'Devoluciones')::INTEGER
+	);
+	INSERT INTO ReporteCaja (IdSucursal, FechaReporte) VALUES
+	(idS, fec);
+	SELECT INTO idR IdReporteCaja
+	FROM ReporteCaja
+	WHERE IdSucursal = idS AND FechaReporte = fec;
+	FOREACH ven IN ARRAY vens LOOP
+		INSERT INTO ReporteVenta (IdReporteCaja, IdArticulo) VALUES
+		(idR, ven);
+	END LOOP;
+	FOREACH dev IN ARRAY devs LOOP
+		INSERT INTO ReporteDevolucion (IdReporteCaja, IdArticulo) VALUES
+		(idR, dev);
+	END LOOP;
+END;
+$$ LANGUAGE plpgsql;
+
+--DROP FUNCTION InsertarReporte(TEXT);
+--SELECT InsertarReporte('{"IdSucursal":"1","FechaReporte":"13-10-2019","Ventas":["1","4"],"Devoluciones":["2","3"]}');
