@@ -281,3 +281,210 @@ END;
 $$ LANGUAGE plpgsql;
 --DROP FUNCTION FragmentarPuntos(VARCHAR);
 --SELECT * FROM FragmentarPuntos('305210664');
+
+
+-- Inserciones
+
+
+CREATE OR REPLACE FUNCTION InsertarCliente(IN client TEXT)
+RETURNS VOID AS $$
+DECLARE clientJson JSON;
+DECLARE Usu JSON;
+DECLARE Pun INTEGER;
+DECLARE Dir JSON;
+DECLARE IdD INTEGER;
+DECLARE IdU INTEGER;
+BEGIN
+	SELECT INTO clientJson CAST(client AS JSON);
+	SELECT INTO Usu clientJson->'Usuario';
+	SELECT INTO Pun CAST(clientJson->>'Puntos' AS INTEGER);
+	SELECT INTO Dir Usu->'Direccion';
+
+	IF NOT EXISTS(
+		SELECT 1
+		FROM Pais
+		WHERE Nombre = Dir->>'Pais'
+	) THEN
+		INSERT INTO Pais (Nombre) VALUES
+		(Dir->>'Pais');
+	END IF;
+
+	IF NOT EXISTS(
+		SELECT 1
+		FROM Provincia
+		WHERE Nombre = Dir->>'Provincia'
+	) THEN
+		INSERT INTO Provincia (Nombre) VALUES
+		(Dir->>'Provincia');
+	END IF;
+
+	IF NOT EXISTS(
+		SELECT 1
+		FROM Canton
+		WHERE Nombre = Dir->>'Canton'
+	) THEN
+		INSERT INTO Canton (Nombre) VALUES
+		(Dir->>'Canton');
+	END IF;
+
+	IF NOT EXISTS(
+		SELECT 1
+		FROM Ciudad
+		WHERE Nombre = Dir->>'Ciudad'
+	) THEN
+		INSERT INTO Ciudad (Nombre) VALUES
+		(Dir->>'Ciudad');
+	END IF;
+
+	IF NOT EXISTS(
+		SELECT 1
+		FROM Direccion
+		WHERE Nombre = Dir->>'Direccion'
+	) THEN
+		INSERT INTO Direccion (Nombre) VALUES
+		(Dir->>'Direccion');
+	END IF;
+
+	SELECT INTO IdD IdDireccion
+	FROM Direccion
+	WHERE Nombre = Dir->>'Direccion';
+
+	IF NOT EXISTS(
+		SELECT 1
+		FROM Usuario
+		WHERE Identificacion = Usu->>'Identificacion'
+	) THEN
+		INSERT INTO Usuario (Nombre,Identificacion,ApellidoPat,ApellidoMat,FechaNacimiento,NumeroTelefonico,IdDireccion)
+		VALUES
+		(Usu->>'Nombre',Usu->>'Identificacion',Usu->>'ApellidoPat',Usu->>'ApellidoMat',CAST(Usu->>'FechaNacimiento' AS DATE),Usu->>'NumeroTelefonico',IdD);
+	END IF;
+
+	SELECT INTO IdU IdUsuario
+	FROM Usuario
+	WHERE Identificacion = Usu->>'Identificacion';
+
+	INSERT INTO Cliente (IdUsuario, Puntos) VALUES
+	(IdU, Pun);
+END;
+$$ LANGUAGE plpgsql;
+
+--DROP FUNCTION InsertarCliente(TEXT);
+--SELECT InsertarCliente('{"Usuario":{"Nombre":"Francinni","Identificacion":"302440254","ApellidoPat":"Campos","ApellidoMat":"Granados","FechaNacimiento":"30-04-2001","NumeroTelefonico":"privado","Direccion":{"Direccion":"Centro","Ciudad":"Turrialba","Canton":"Turrialba","Provincia":"Cartago","Pais":"Nicaragua"}},"Puntos":0}'::TEXT);
+--
+--SELECT ARRAY(SELECT json_array_elements_text(j->'x2')::int
+--FROM cast('{"x1":"1","x2":["2","3","4","5"]}' AS json) AS j);
+
+
+CREATE OR REPLACE FUNCTION InsertarAdministrador(IN administrador TEXT)
+RETURNS VOID AS $$
+DECLARE administradorJson JSON;
+DECLARE ide TEXT;
+DECLARE fec DATE;
+DECLARE idS INTEGER;
+DECLARE idEm INTEGER;
+BEGIN
+	SELECT INTO administradorJson CAST(administrador AS JSON);
+	SELECT INTO ide administradorJson->>'Identificacion';
+	SELECT INTO fec CAST(administradorJson->>'Fecha' AS DATE);
+	SELECT INTO idS CAST(administradorJson->>'IdSucursal' AS INTEGER);
+	SELECT INTO idEm IdEmpleado
+	FROM Empleado AS E
+	INNER JOIN Usuario AS U ON U.IdUsuario = E.idusuario
+	WHERE U.Identificacion = ide;
+	INSERT INTO AdministradorSucursal (IdEmpleado, Fecha, IdSucursal) VALUES
+	(idEm, fec, idS);
+END;
+$$ LANGUAGE plpgsql;
+
+--DROP FUNCTION InsertarAdministrador(TEXT);
+--SELECT InsertarAdministrador('{"Identificacion":"305210664","Fecha":"13-10-2019","IdSucursal":"1"}');
+
+
+CREATE OR REPLACE FUNCTION InsertarPuesto(IN emple TEXT)
+RETURNS VOID AS $$
+DECLARE empleadoJson JSON;
+DECLARE ide TEXT;
+DECLARE idP INTEGER;
+DECLARE fec DATE;
+DECLARE idEm INTEGER;
+BEGIN
+	SELECT INTO empleadoJson CAST(emple AS JSON);
+	SELECT INTO ide empleadoJson->>'Identificacion';
+	SELECT INTO idP CAST(empleadoJson->>'IdPuesto' AS INTEGER);
+	SELECT INTO fec CAST(empleadoJson->>'FechaInicio' AS DATE);
+	SELECT INTO idEm IdEmpleado
+	FROM Empleado AS E
+	INNER JOIN Usuario AS U ON U.IdUsuario = E.idusuario
+	WHERE U.Identificacion = ide;
+	INSERT INTO PuestoEmpleado (IdEmpleado, IdPuesto, FechaInicio) VALUES
+	(idEm, idP, fec);
+END;
+$$ LANGUAGE plpgsql;
+
+--DROP FUNCTION InsertarPuesto(TEXT);
+--SELECT InsertarPuesto('{"Identificacion":"305210664","IdPuesto":"1","FechaInicio":"13-10-2019"}');
+
+
+CREATE OR REPLACE FUNCTION InsertarPromocion(IN promo TEXT)
+RETURNS VOID AS $$
+DECLARE promocionJson JSON;
+DECLARE idU INTEGER;
+DECLARE fecI TIMESTAMP;
+DECLARE fecF TIMESTAMP;
+DECLARE por INTEGER;
+DECLARE prods INTEGER[];
+DECLARE idPromo INTEGER;
+DECLARE prod INTEGER;
+BEGIN
+	SELECT INTO promocionJson CAST(promo AS JSON);
+	SELECT INTO idU CAST(promocionJson->>'IdSucursal' AS INTEGER);
+	SELECT INTO fecI CAST(promocionJson->>'FechaHoraInicio' AS TIMESTAMP);
+	SELECT INTO fecF CAST(promocionJson->>'FechaHoraFin' AS TIMESTAMP);
+	SELECT INTO por CAST(promocionJson->>'Porcentaje' AS INTEGER);
+	SELECT INTO prods ARRAY(
+		SELECT JSON_ARRAY_ELEMENTS_TEXT(promocionJson->'Productos')::INTEGER
+	);
+	INSERT INTO Promocion (IdSucursal, FechaHoraInicio, FechaHoraFin, Porcentaje) VALUES
+	(idU, fecI, fecF, por);
+	SELECT INTO idPromo IdPromocion
+	FROM Promocion
+	WHERE FechaHoraInicio = fecI AND FechaHoraFin = fecF AND IdSucursal = idU AND Porcentaje = por;
+	FOREACH prod IN ARRAY prods LOOP
+		INSERT INTO PromocionProducto (IdPromocion, IdProducto) VALUES
+		(idPromo, prod);
+	END LOOP;
+END;
+$$ LANGUAGE plpgsql;
+
+--DROP FUNCTION InsertarPromocion(TEXT);
+--SELECT InsertarPromocion('{"IdSucursal":"1","FechaHoraInicio":"01-01-2000 04:05:06","FechaHoraFin":"01-01-2002 23:00:00","Porcentaje":"50","Productos":["1","2","3"]}');
+
+
+CREATE OR REPLACE FUNCTION InsertarPuntos(IN points TEXT)
+RETURNS VOID AS $$
+DECLARE puntosJson JSON;
+DECLARE ide TEXT;
+DECLARE pun INTEGER;
+DECLARE idC INTEGER;
+DECLARE punAntes INTEGER;
+BEGIN
+	SELECT INTO puntosJson CAST(points AS JSON);
+	SELECT INTO ide puntosJson->>'Identificacion';
+	SELECT INTO pun CAST(puntosJson->>'Puntos' AS INTEGER);
+	SELECT INTO idC C.IdCliente
+	FROM Cliente AS C
+	INNER JOIN Usuario AS U ON U.IdUsuario = C.IdUsuario
+	WHERE U.Identificacion = ide;
+	SELECT INTO punAntes Puntos
+	FROM Cliente
+	WHERE IdCliente = idC;
+	UPDATE Cliente 
+	SET Puntos = punAntes + pun
+	WHERE IdCliente = idC;
+END;
+$$ LANGUAGE plpgsql;
+
+
+--DROP FUNCTION InsertarPuntos(TEXT);
+--SELECT InsertarPuntos('{"Identificacion":"305210664","Puntos":"-1"}');
+
