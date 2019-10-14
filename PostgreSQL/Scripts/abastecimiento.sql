@@ -12,15 +12,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-DROP FUNCTION ReporteAbastecimiento();
-SELECT ReporteAbastecimiento();
-
---'C:\Users\este0\Desktop\Esteban\TEC\2019 - II Semestre\Bases de Datos\Sk84TEC\test.csv'
-
---SELECT S.IdSucursal, P.IdProducto, COUNT(A.IdArticulo) AS Cantidad
---FROM Sucursal AS S
---INNER JOIN Articulo AS A ON A.IdSucursal = S.idsucursal
---INNER JOIN Producto AS P ON P.IdProducto = A.IdProducto
---GROUP BY S.IdSucursal, P.IdProducto;
+--DROP FUNCTION ReporteAbastecimiento();
+--SELECT ReporteAbastecimiento();
 
 

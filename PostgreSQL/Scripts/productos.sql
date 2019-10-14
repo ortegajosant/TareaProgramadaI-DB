@@ -1,8 +1,8 @@
 CREATE TABLE Marca (
 	IdMarca SERIAL PRIMARY KEY,
-	NombreMarca VARCHAR(20) NOT NULL
+	NombreMarca VARCHAR(20) NOT NULL,
+	FechaAdicion DATE NOT NULL
 );
---ALTER TABLE Marca ADD COLUMN FechaAdicion DATE NOT NULL;
 
 CREATE TABLE TipoArticulo (
 	IdTipoArticulo SERIAL PRIMARY KEY,
@@ -19,10 +19,10 @@ CREATE TABLE Producto (
 	TiempoGarantia INTEGER NOT NULL,
 	Sexo VARCHAR(1) NOT NULL,
 	Medida VARCHAR(3) NOT NULL,
+	FechaAdicion DATE NOT NULL,
 	FOREIGN KEY (IdMarca) REFERENCES Marca(IdMarca),
 	FOREIGN KEY (IdTipoArticulo) REFERENCES TipoArticulo(IdTipoArticulo)
 );
---ALTER TABLE Producto ADD COLUMN FechaAdicion DATE NOT NULL;
 
 CREATE TABLE DetalleProducto (
 	IdProducto SERIAL,
@@ -30,4 +30,19 @@ CREATE TABLE DetalleProducto (
 	Descripcion VARCHAR(20) NOT NULL,
 	FOREIGN KEY (IdProducto) REFERENCES Producto(IdProducto)
 );
---ALTER TABLE DetalleProducto ADD COLUMN FechaAdicion DATE NOT NULL;
+
+CREATE TABLE Promocion (
+	IdPromocion SERIAL PRIMARY KEY,
+	IdSucursal SERIAL,
+	FechaHoraInicio TIMESTAMP NOT NULL,
+	FechaHoraFin TIMESTAMP NOT NULL,
+	Porcentaje INTEGER NOT NULL,
+	FOREIGN KEY (IdSucursal) REFERENCES Sucursal (IdSucursal)
+);
+
+CREATE TABLE PromocionProducto (
+	IdPromocion SERIAL,
+	IdProducto SERIAL,
+	FOREIGN KEY (IdPromocion) REFERENCES Promocion (IdPromocion),
+	FOREIGN KEY (IdProducto) REFERENCES Producto (IdProducto)
+);
