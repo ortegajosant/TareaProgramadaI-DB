@@ -13,6 +13,7 @@ CREATE TABLE VentaArticulo
 (
 	IdVenta INT NOT NULL,
     IdArticulo INT NOT NULL,
+    Puntos BOOLEAN NOT NULL,
     FOREIGN KEY (IdVenta) REFERENCES Venta (IdVenta),
     FOREIGN KEY (IdArticulo) REFERENCES Articulo (IdArticulo)
 );

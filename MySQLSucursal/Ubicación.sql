@@ -1,5 +1,3 @@
--- use sk8fortec
-
 CREATE TABLE Pais
 (
 	IdPais INT AUTO_INCREMENT PRIMARY KEY,

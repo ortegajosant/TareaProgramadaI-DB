@@ -14,13 +14,6 @@ CREATE TABLE PuestoEmpleado
     FOREIGN KEY (IdPuesto) REFERENCES Puesto (IdPuesto)
 );
 
-CREATE TABLE SucursalEmpleado
-(
-	IdEmpleado INT NOT NULL,
-    FechaInicio DATE NOT NULL,
-    FOREIGN KEY (IdEmpleado) REFERENCES Empleado (IdEmpleado)
-);
-
 CREATE TABLE AdministradorSucursal 
 (
 	IdEmpleado INT NOT NULL,
@@ -40,4 +33,9 @@ CREATE TABLE Devolucion
 	IdArticulo INT NOT NULL,
     Fecha DATE NOT NULL,
     FOREIGN KEY (IdArticulo) REFERENCES Articulo (IdArticulo)
+);
+
+CREATE TABLE InfoSucursal
+(
+	IdSucursal INT NOT NULL UNIQUE
 );
