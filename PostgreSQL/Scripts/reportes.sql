@@ -5,11 +5,16 @@ CREATE TABLE ReporteCaja (
 	FOREIGN KEY (IdSucursal) REFERENCES Sucursal(IdSucursal)
 );
 
-CREATE TABLE ReporteProducto (
+CREATE TABLE ReporteVenta (
 	IdReporteCaja SERIAL,
-	IdProducto SERIAL,
-	Cantidad INTEGER NOT NULL,
-	Ganancia INTEGER NOT NULL,
+	IdArticulo SERIAL,
 	FOREIGN KEY (IdReporteCaja) REFERENCES ReporteCaja(IdReporteCaja),
-	FOREIGN KEY (IdProducto) REFERENCES Producto(IdProducto)
+	FOREIGN KEY (IdArticulo) REFERENCES Articulo(IdArticulo)
+);
+
+CREATE TABLE ReporteDevolucion (
+	IdReporteCaja SERIAL,
+	IdArticulo SERIAL,
+	FOREIGN KEY (IdReporteCaja) REFERENCES ReporteCaja(IdReporteCaja),
+	FOREIGN KEY (IdArticulo) REFERENCES Articulo(IdArticulo)
 );

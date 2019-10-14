@@ -19,3 +19,9 @@ CREATE TABLE Empleado (
 	FOREIGN KEY (IdUsuario) REFERENCES Usuario(IdUsuario)
 );
 
+CREATE TABLE Cliente (
+	IdCliente SERIAL PRIMARY KEY,
+	IdUsuario SERIAL,
+	Puntos INTEGER NOT NULL,
+	FOREIGN KEY (IdUsuario) REFERENCES Usuario(IdUsuario)
+);
