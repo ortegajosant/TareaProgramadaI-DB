@@ -13,6 +13,7 @@ CREATE TABLE VentaArticulo
 (
 	IdVenta INT NOT NULL,
     IdArticulo INT NOT NULL,
+    Puntos BOOLEAN NOT NULL,
     FOREIGN KEY (IdVenta) REFERENCES Venta (IdVenta),
     FOREIGN KEY (IdArticulo) REFERENCES Articulo (IdArticulo)
 );
@@ -26,12 +27,18 @@ CREATE TABLE ReporteCaja
 -- ALTER TABLE ReporteCaja DROP COLUMN FechaReporte;
 -- ALTER TABLE ReporteCaja ADD COLUMN FechaReporte DATETIME NOT NULL;
 
-CREATE TABLE ReporteProducto
+CREATE TABLE ReporteVenta
 (
 	IdReporteCaja INT NOT NULL,
-    IdProducto INT NOT NULL,
-    Cantidad INT NOT NULL,
-    Ganancia INT NOT NULL,
+    IdArticulo INT NOT NULL,
     FOREIGN KEY (IdReporteCaja) REFERENCES ReporteCaja (IdReporteCaja),
-    FOREIGN KEY (IdProducto) REFERENCES Producto (IdProducto)
+    FOREIGN KEY (IdArticulo) REFERENCES Articulo (IdArticulo)
+);
+
+CREATE TABLE ReporteDevolucion
+(
+	IdReporteCaja INT NOT NULL,
+    IdArticulo INT NOT NULL,
+    FOREIGN KEY (IdReporteCaja) REFERENCES ReporteCaja (IdReporteCaja),
+    FOREIGN KEY (IdArticulo) REFERENCES Articulo (IdArticulo)
 );
