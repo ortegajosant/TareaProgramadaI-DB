@@ -11,9 +11,16 @@ $Articulo$ LANGUAGE plpgsql;
 
 CREATE FUNCTION ArticuloEnSucursal()
 RETURNS TRIGGER AS $EnvioArticulo$
+DECLARE idS INTEGER;
 BEGIN
 	IF (TG_OP = 'INSERT') THEN
-		UPDATE Articulo SET EstadoArticulo = 'En Sucursal' WHERE IdArticulo = NEW.IdArticulo;
+		SELECT INTO idS S.IdSucursal
+		FROM Sucursal AS S
+		INNER JOIN Envio AS Env ON Env.IdSucursal = S.IdSucursal
+		INNER JOIN EnvioArticulo AS Ar ON Ar.IdEnvio = Env.IdEnvio
+		WHERE Ar.IdArticulo = NEW.IdArticulo;
+		UPDATE Articulo SET IdSucursal = idS WHERE IdArticulo = NEW.IdArticulo;
+		UPDATE Articulo SET EstadoArticulo = 'En Sucursal' WHERE IdSucursal = idS;
 		RETURN NEW;
 	END IF;
 	RETURN NULL;
@@ -22,9 +29,13 @@ $EnvioArticulo$ LANGUAGE plpgsql;
 
 CREATE FUNCTION ArticuloEnDevolucion()
 RETURNS TRIGGER AS $DevolucionArticulo$
+DECLARE idA INTEGER;
 BEGIN
 	IF (TG_OP = 'INSERT') THEN
-		UPDATE Articulo SET EstadoArticulo = 'En Devolucion' WHERE IdArticulo = NEW.IdArticulo;
+		SELECT INTO idA IdArticulo
+		FROM DevolucionArticulo
+		WHERE IdArticulo = NEW.IdArticulo;
+		UPDATE Articulo SET EstadoArticulo = 'En Devolucion' WHERE IdArticulo = idA;
 		RETURN NEW;
 	END IF;
 	RETURN NULL;
@@ -33,9 +44,13 @@ $DevolucionArticulo$ LANGUAGE plpgsql;
 
 CREATE FUNCTION ArticuloEnGarantia()
 RETURNS TRIGGER AS $ReporteVenta$
+DECLARE idA INTEGER;
 BEGIN
 	IF (TG_OP = 'INSERT') THEN
-		UPDATE Articulo SET EstadoArticulo = 'En Garantia' WHERE IdArticulo = NEW.IdArticulo;
+		SELECT INTO idA IdArticulo
+		FROM ReporteVenta
+		WHERE IdArticulo = NEW.IdArticulo;
+		UPDATE Articulo SET EstadoArticulo = 'En Garantia' WHERE IdArticulo = idA;
 		RETURN NEW;
 	END IF;
 	RETURN NULL;
