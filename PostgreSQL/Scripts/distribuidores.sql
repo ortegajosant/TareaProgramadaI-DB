@@ -10,7 +10,7 @@ CREATE TABLE DistribuidorProducto (
 	Costo INTEGER NOT NULL,
 	IdProducto SERIAL,
 	FOREIGN KEY (IdDistribuidor) REFERENCES Distribuidor(IdDistribuidor),
-	ADD FOREIGN KEY (IdProducto) REFERENCES Producto(IdProducto)
+	FOREIGN KEY (IdProducto) REFERENCES Producto(IdProducto)
 );
 
 

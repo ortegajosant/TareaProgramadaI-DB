@@ -182,7 +182,8 @@ BEGIN
 	INNER JOIN Provincia AS Pr ON Pr.IdProvincia = Ca.IdProvincia
 	INNER JOIN Pais AS Pa ON Pa.IdPais = Pr.IdPais
 	INNER JOIN Cliente AS C ON C.IdUsuario = U.IdUsuario
-	WHERE U.IdUsuario = id;
+	WHERE U.IdUsuario = id
+	LIMIT 1;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -208,8 +209,29 @@ $$ LANGUAGE plpgsql;
 --SELECT * FROM FragmentarPuntos('305210664');
 
 
--- Inserciones
+CREATE OR REPLACE FUNCTION FragmentarPuesto()
+RETURNS TABLE (J JSON) AS $$
+BEGIN
+	RETURN QUERY
+	SELECT JSON_AGG(
+				JSON_BUILD_OBJECT(
+					'Identificacion', U.Identificacion,
+					'IdPuesto', PE.IdPuesto,
+					'FechaInicio', PE.FechaInicio
+	            )
+			)
+	FROM PuestoEmpleado AS PE
+	INNER JOIN Empleado AS E ON E.IdEmpleado = PE.IdEmpleado
+	INNER JOIN Usuario AS U ON U.IdUsuario = E.IdUsuario
+	WHERE PE.FechaInicio = NOW()::TIMESTAMP::DATE;
+END;
+$$ LANGUAGE plpgsql;
 
+--DROP FUNCTION FragmentarPuesto();
+--SELECT * FROM FragmentarPuesto();
+
+
+-- Inserciones
 
 CREATE OR REPLACE FUNCTION InsertarCliente(IN client TEXT)
 RETURNS VOID AS $$
@@ -219,11 +241,17 @@ DECLARE Pun INTEGER;
 DECLARE Dir JSON;
 DECLARE IdD INTEGER;
 DECLARE IdU INTEGER;
+DECLARE IdPa INTEGER;
+DECLARE IdPr INTEGER;
+DECLARE IdCa INTEGER;
+DECLARE IdCi INTEGER;
 BEGIN
 	SELECT INTO clientJson CAST(client AS JSON);
 	SELECT INTO Usu clientJson->'Usuario';
 	SELECT INTO Pun CAST(clientJson->>'Puntos' AS INTEGER);
 	SELECT INTO Dir Usu->'Direccion';
+
+
 
 	IF NOT EXISTS(
 		SELECT 1
@@ -233,46 +261,91 @@ BEGIN
 		INSERT INTO Pais (Nombre) VALUES
 		(Dir->>'Pais');
 	END IF;
+	SELECT INTO IdPa IdPais 
+	FROM Pais 
+	WHERE Nombre = Dir->>'Pais';
+
+
 
 	IF NOT EXISTS(
 		SELECT 1
-		FROM Provincia
-		WHERE Nombre = Dir->>'Provincia'
+		FROM Provincia AS Pr
+		INNER JOIN Pais AS Pa ON Pa.IdPais = Pr.IdPais
+		WHERE Pr.Nombre = Dir->>'Provincia' AND Pa.Nombre = Dir->>'Pais'
 	) THEN
-		INSERT INTO Provincia (Nombre) VALUES
-		(Dir->>'Provincia');
+		INSERT INTO Provincia (IdPais, Nombre) VALUES
+		(IdPa, Dir->>'Provincia');
 	END IF;
+	SELECT INTO IdPr Pr.IdProvincia 
+	FROM Provincia AS Pr
+	INNER JOIN Pais AS Pa ON Pa.IdPais = Pr.IdPais
+	WHERE Pr.Nombre = Dir->>'Provincia' AND Pa.Nombre = Dir->>'Pais';
+
+
 
 	IF NOT EXISTS(
 		SELECT 1
-		FROM Canton
-		WHERE Nombre = Dir->>'Canton'
+		FROM Canton AS Ca
+		INNER JOIN Provincia AS Pr ON Pr.IdProvincia = Ca.IdProvincia
+		INNER JOIN Pais AS Pa ON Pa.IdPais = Pr.IdPais
+		WHERE Ca.Nombre = Dir->>'Canton' AND Pr.Nombre = Dir->>'Provincia' AND Pa.Nombre = Dir->>'Pais'
 	) THEN
-		INSERT INTO Canton (Nombre) VALUES
-		(Dir->>'Canton');
+		INSERT INTO Canton (IdProvincia, Nombre) VALUES
+		(IdPr, Dir->>'Canton');
 	END IF;
+	SELECT INTO IdCa Ca.IdCanton 
+	FROM Canton AS Ca
+	INNER JOIN Provincia AS Pr ON Pr.IdProvincia = Ca.IdProvincia
+	INNER JOIN Pais AS Pa ON Pa.IdPais = Pr.IdPais
+	WHERE Ca.Nombre = Dir->>'Canton' AND Pr.Nombre = Dir->>'Provincia' AND Pa.Nombre = Dir->>'Pais';
+
+
 
 	IF NOT EXISTS(
 		SELECT 1
-		FROM Ciudad
-		WHERE Nombre = Dir->>'Ciudad'
+		FROM Ciudad AS Ci
+		INNER JOIN Canton AS Ca ON Ca.IdCanton = Ci.IdCanton
+		INNER JOIN Provincia AS Pr ON Pr.IdProvincia = Ca.IdProvincia
+		INNER JOIN Pais AS Pa ON Pa.IdPais = Pr.IdPais
+		WHERE Ci.Nombre = Dir->>'Ciudad' AND Ca.Nombre = Dir->>'Canton'
+			AND Pr.Nombre = Dir->>'Provincia' AND Pa.Nombre = Dir->>'Pais'
 	) THEN
-		INSERT INTO Ciudad (Nombre) VALUES
-		(Dir->>'Ciudad');
+		INSERT INTO Ciudad (IdCanton, Nombre) VALUES
+		(IdCa, Dir->>'Ciudad');
 	END IF;
+	SELECT INTO IdCi Ci.IdCiudad 
+	FROM Ciudad AS Ci
+	INNER JOIN Canton AS Ca ON Ca.IdCanton = Ci.IdCanton
+	INNER JOIN Provincia AS Pr ON Pr.IdProvincia = Ca.IdProvincia
+	INNER JOIN Pais AS Pa ON Pa.IdPais = Pr.IdPais
+	WHERE Ci.Nombre = Dir->>'Ciudad' AND Ca.Nombre = Dir->>'Canton'
+		AND Pr.Nombre = Dir->>'Provincia' AND Pa.Nombre = Dir->>'Pais';
+
+
 
 	IF NOT EXISTS(
 		SELECT 1
-		FROM Direccion
-		WHERE Nombre = Dir->>'Direccion'
+		FROM Direccion AS D
+		INNER JOIN Ciudad AS Ci ON Ci.IdCiudad = D.IdCiudad
+		INNER JOIN Canton AS Ca ON Ca.IdCanton = Ci.IdCanton
+		INNER JOIN Provincia AS Pr ON Pr.IdProvincia = Ca.IdProvincia
+		INNER JOIN Pais AS Pa ON Pa.IdPais = Pr.IdPais
+		WHERE D.Nombre = Dir->>'Direccion' AND Ci.Nombre = Dir->>'Ciudad' AND Ca.Nombre = Dir->>'Canton'
+			AND Pr.Nombre = Dir->>'Provincia' AND Pa.Nombre = Dir->>'Pais'
 	) THEN
-		INSERT INTO Direccion (Nombre) VALUES
-		(Dir->>'Direccion');
+		INSERT INTO Direccion (IdCiudad, Nombre) VALUES
+		(IdCi, Dir->>'Direccion');
 	END IF;
+	SELECT INTO IdD D.IdDireccion 
+	FROM Direccion AS D
+	INNER JOIN Ciudad AS Ci ON Ci.IdCiudad = D.IdCiudad
+	INNER JOIN Canton AS Ca ON Ca.IdCanton = Ci.IdCanton
+	INNER JOIN Provincia AS Pr ON Pr.IdProvincia = Ca.IdProvincia
+	INNER JOIN Pais AS Pa ON Pa.IdPais = Pr.IdPais
+	WHERE D.Nombre = Dir->>'Direccion' AND Ci.Nombre = Dir->>'Ciudad' AND Ca.Nombre = Dir->>'Canton'
+		AND Pr.Nombre = Dir->>'Provincia' AND Pa.Nombre = Dir->>'Pais';
 
-	SELECT INTO IdD IdDireccion
-	FROM Direccion
-	WHERE Nombre = Dir->>'Direccion';
+	
 
 	IF NOT EXISTS(
 		SELECT 1
@@ -282,19 +355,20 @@ BEGIN
 		INSERT INTO Usuario (Nombre,Identificacion,ApellidoPat,ApellidoMat,FechaNacimiento,NumeroTelefonico,IdDireccion)
 		VALUES
 		(Usu->>'Nombre',Usu->>'Identificacion',Usu->>'ApellidoPat',Usu->>'ApellidoMat',CAST(Usu->>'FechaNacimiento' AS DATE),Usu->>'NumeroTelefonico',IdD);
+		
+		SELECT INTO IdU IdUsuario
+		FROM Usuario
+		WHERE Identificacion = Usu->>'Identificacion';
+	
+		INSERT INTO Cliente (IdUsuario, Puntos) VALUES
+		(IdU, Pun);
 	END IF;
 
-	SELECT INTO IdU IdUsuario
-	FROM Usuario
-	WHERE Identificacion = Usu->>'Identificacion';
-
-	INSERT INTO Cliente (IdUsuario, Puntos) VALUES
-	(IdU, Pun);
 END;
 $$ LANGUAGE plpgsql;
 
 --DROP FUNCTION InsertarCliente(TEXT);
---SELECT InsertarCliente('{"Usuario":{"Nombre":"Francinni","Identificacion":"302440254","ApellidoPat":"Campos","ApellidoMat":"Granados","FechaNacimiento":"30-04-2001","NumeroTelefonico":"privado","Direccion":{"Direccion":"Centro","Ciudad":"Turrialba","Canton":"Turrialba","Provincia":"Cartago","Pais":"Nicaragua"}},"Puntos":0}'::TEXT);
+--SELECT InsertarCliente('{"Usuario":{"Nombre":"Francinni","Identificacion":"302445254","ApellidoPat":"Campos","ApellidoMat":"Granados","FechaNacimiento":"30-04-2001","NumeroTelefonico":"privado","Direccion":{"Direccion":"Centro","Ciudad":"Turrialba","Canton":"Turrialba","Provincia":"Cartago","Pais":"Nicaragua"}},"Puntos":0}'::TEXT);
 
 
 CREATE OR REPLACE FUNCTION InsertarAdministrador(IN administrador TEXT)
