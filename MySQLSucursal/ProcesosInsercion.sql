@@ -1,7 +1,11 @@
 DELIMITER //
-CREATE PROCEDURE GenerarAdministradorSucursal(IN IdEmpleado INT, OUT jsonAS JSON)
+CREATE PROCEDURE GenerarAdministradorSucursal(OUT jsonAS JSON)
 BEGIN
-	SELECT JSON_OBJECT('Identificacion', U.Identificacion, 'Fecha', AD.Fecha, 'IdSucursal', S.IdSucursal) INTO jsonAS
+	DECLARE IdEmpleado INT DEFAULT 0;
+    SELECT AD.IdEmpleado FROM AdministradorSucursal AD
+    WHERE AD.Fecha = curdate() INTO IdEmpleado;
+	SELECT JSON_OBJECT('Identificacion', U.Identificacion, 'Fecha', AD.Fecha, 'IdSucursal', S.IdSucursal)
+    INTO jsonAS
     FROM InfoSucursal S
     INNER JOIN Empleado E ON E.IdEmpleado = IdEmpleado
     INNER JOIN Usuario U ON U.IdUsuario = E.IdUsuario
@@ -10,23 +14,25 @@ END//
 DELIMITER ;
 
 
-DROP PROCEDURE GenerarCliente;
-CALL GenerarCliente(1, @cliente);
-SELECT @cliente;
+-- DROP PROCEDURE GenerarCliente;
+-- CALL GenerarCliente(@cliente);
+-- SELECT @cliente;
 
 DELIMITER //
-CREATE PROCEDURE GenerarCliente(IN IdCliente INT, OUT jsonCliente JSON)
+CREATE PROCEDURE GenerarCliente(OUT jsonCliente JSON)
 BEGIN
-	SELECT JSON_ARRAYAGG(JSON_OBJECT('usuario', 
+	DECLARE IdCliente INT DEFAULT 0;
+    SELECT COUNT(C.IdCliente) FROM Cliente C INTO IdCliente; 
+	SELECT JSON_ARRAYAGG(JSON_OBJECT('Usuario', 
 										JSON_OBJECT('Nombre', U.Nombre, 'Identificacion', U.Identificacion,
 													'ApellidoPat', U.ApellidoPat, 'ApellidoMat', U.ApellidoMat,
                                                     'FechaNacimiento', U.FechaNacimiento, 'NumeroTelefonico', U.NumeroTelefonico,
-                                                    'direccion', JSON_OBJECT('direccion', D.Descripcion, 
-                                                                             'ciudad', CD.Nombre,
-                                                                             'canton', C.Nombre,
-                                                                             'provincia', PR.Nombre,
-                                                                             'pais', P.Nombre)),
-									'puntos', CL.Punto, 'IdSucursal', IFS.IdSucursal))
+                                                    'Direccion', JSON_OBJECT('Direccion', D.Descripcion, 
+                                                                             'Ciudad', CD.Nombre,
+                                                                             'Canton', C.Nombre,
+                                                                             'Provincia', PR.Nombre,
+                                                                             'Pais', P.Nombre)),
+									'Puntos', CL.Punto, 'IdSucursal', IFS.IdSucursal))
 	INTO jsonCliente
 	FROM InfoSucursal IFS
     INNER JOIN Cliente CL ON CL.IdCliente = IdCliente
@@ -42,9 +48,9 @@ DELIMITER ;
 DELIMITER //
 CREATE PROCEDURE GenerarPuntos (IN IdCliente INT, OUT jsonPuntos JSON)
 BEGIN
-	SELECT JSON_OBJECT('Puntos', CL.Punto, 'Identificacion', U.Identificacion)
+	SELECT JSON_OBJECT('Puntos', CL.Punto, 'Identificacion', U.Identificacion, 'IdSucursal', InfoSucursal.IdSucursal)
     INTO jsonPuntos
-    FROM Cliente CL
+    FROM Cliente CL, InfoSucursal
     INNER JOIN Usuario U ON CL.IdUsuario = U.IdUsuario
     WHERE CL.IdCliente = IdCliente;
 END//
@@ -80,7 +86,7 @@ END //
 DELIMITER ;
 
 DELIMITER //
-CREATE PROCEDURE GenerarReporte(OUT jsonReporte JSON)
+CREATE PROCEDURE GenerarReporteJSON(OUT jsonReporte JSON)
 BEGIN
 	SELECT JSON_ARRAYAGG(RV.IdArticulo)
     INTO @ventas 

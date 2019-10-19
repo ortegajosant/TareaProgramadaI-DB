@@ -126,9 +126,9 @@ BEGIN
     DECLARE largo INT DEFAULT 0;
     SET largo = JSON_LENGTH( nClientes, '$' );
     WHILE (cont < largo) DO
-		SET @temp = JSON_EXTRACT(nEmpleados, CONCAT('$[',cont,']'));
+		SET @temp = JSON_EXTRACT(nClientes, CONCAT('$[',cont,']'));
         CALL InsertarUsuario (JSON_EXTRACT(@temp, '$.Usuario'));
-        INSERT INTO Cliente (IdUsuario, Puntos)
+        INSERT INTO Cliente (IdUsuario, Punto)
 		SELECT U.IdUsuario, CONVERT(JSON_EXTRACT(@temp, '$.Puntos'), UNSIGNED) FROM Usuario U
 		WHERE U.Identificacion = JSON_EXTRACT(JSON_EXTRACT(@temp, '$.Usuario'), '$.Identificacion');
 		SET cont = cont + 1;
@@ -136,12 +136,15 @@ BEGIN
 END//
 DELIMITER ;
 
+DROP Procedure InsertarUsuario;
+
 DELIMITER //
 CREATE PROCEDURE InsertarUsuario(IN nUsuario JSON)
 BEGIN
-	IF NOT EXISTS(SELECT U.IdUsuarioGeneral FROM Usuario U 
+	IF NOT EXISTS(SELECT U.Identificacion FROM Usuario U 
 	WHERE U.Identificacion = JSON_EXTRACT(nUsuario, '$.Identificacion')) THEN
 		CALL InsertarUbicacion(JSON_EXTRACT(nUsuario, '$.direccion'));
+        SELECT * FROM nUsuario;
         INSERT INTO Usuario (IdDireccion, Nombre, Identificacion, ApellidoPat, ApellidoMat, FechaNacimiento, NumeroTelefonico)
         SELECT  D.IdDireccion, JSON_EXTRACT(nUsuario, '$.Nombre'), JSON_EXTRACT(nUsuario, '$.Identificacion'), 
 				JSON_EXTRACT(nUsuario, '$.ApellidoPat'), JSON_EXTRACT(nUsuario, '$.ApellidoMat'),
@@ -279,7 +282,7 @@ DELIMITER ;
 DELIMITER //
 CREATE PROCEDURE GenerarReporteCSV()
 BEGIN
-    SET @cmd = CONCAT("SELECT curdate(), RC.IdReporteCaja AS 'Reporte', RV.IdArticulo AS 'Articulo', 
+    SET @cmd = CONCAT("SELECT curdate(), RC.IdReporteCaja AS 'Reporte', RV.IdArticulo AS 'Articulo',
     RD.IdArticulo AS 'Devolucion' FROM ReporteCaja RC
     INNER JOIN ReporteDevolucion RD ON RD.IdReporteCaja = RC.IdReporteCaja
     INNER JOIN ReporteVenta RV ON RV.IdReporteCaja = RC.IdReporteCaja

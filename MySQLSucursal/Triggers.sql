@@ -33,8 +33,10 @@ ON Cliente FOR EACH ROW
 BEGIN
 	DECLARE url TEXT DEFAULT "";
     DECLARE result INT(10);
-    SET url = "./Scripts/eventos.py";
+    SET url = 'python -c "from ./Scripts/sender.py import *; enviar_cliente()"';
     SET result  = sys_exec(url);
     
 END//
-DELIMITER ;
+DELIMITER ; 
+SET @url = 'python -c "from ./Scripts/sender.py import *; enviar_cliente()"';
+SET @result  = sys_exec(@url);

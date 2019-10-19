@@ -7,6 +7,7 @@ CREATE TABLE Promocion
     Porcentaje SMALLINT
 );
 
+
 CREATE TABLE PromocionProducto
 (
 	IdPromocion INT NOT NULL,
